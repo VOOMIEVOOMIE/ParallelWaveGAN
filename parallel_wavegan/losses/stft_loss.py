@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 
 # Copyright 2019 Tomoki Hayashi
@@ -5,10 +6,10 @@
 
 """STFT-based Loss modules."""
 
-from distutils.version import LooseVersion
-
 import torch
 import torch.nn.functional as F
+
+from distutils.version import LooseVersion
 
 is_pytorch_17plus = LooseVersion(torch.__version__) >= LooseVersion("1.7")
 
@@ -27,17 +28,12 @@ def stft(x, fft_size, hop_size, win_length, window):
         Tensor: Magnitude spectrogram (B, #frames, fft_size // 2 + 1).
 
     """
-    if is_pytorch_17plus:
-        x_stft = torch.stft(
-            x, fft_size, hop_size, win_length, window, return_complex=False
-        )
-    else:
-        x_stft = torch.stft(x, fft_size, hop_size, win_length, window)
+    x_stft = torch.stft(
+        x, fft_size, hop_size, win_length, window, return_complex=True)
     real = x_stft[..., 0]
     imag = x_stft[..., 1]
-
-    # NOTE(kan-bayashi): clamp is needed to avoid nan or inf
-    return torch.sqrt(torch.clamp(real**2 + imag**2, min=1e-7)).transpose(2, 1)
+    x_mag = torch.sqrt(torch.clamp((x_stft.real ** 2) + (x_stft.imag ** 2), min=1e-8))
+    return x_mag.transpose(2, 1)
 
 
 class SpectralConvergenceLoss(torch.nn.Module):
